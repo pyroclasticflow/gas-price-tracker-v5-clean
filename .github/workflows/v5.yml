@@ -1,0 +1,32 @@
+name: Gas Tracker Auto Update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * 1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run data engine
+        run: node scripts/data-engine.js
+        env:
+          EIA_KEY: ${{ secrets.EIA_KEY }}
+
+      - name: Commit and push updates
+        run: |
+          git config user.name "gas-bot"
+          git config user.email "gasbot@github.com"
+          git add data/state-model.json
+          git commit -m "auto update gas data" || echo "No changes"
+          git push
