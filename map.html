@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>US Gas Price Map</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body { font-family: Arial; margin: 0; text-align: center; }
+    #map { height: 60vh; width: 100%; }
+    #panel { padding: 15px; }
+    #chartBox { max-width: 900px; margin: auto; }
+  </style>
+</head>
+
+<body>
+  <h2>⛽ US Gas Price Map (Weekly Updated)</h2>
+
+  <div id="map"></div>
+
+  <div id="panel">
+    <h3 id="stateTitle">Click a state marker</h3>
+    <p id="statePrice"></p>
+
+    <div id="chartBox">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const map = L.map("map").setView([39.5, -98.35], 4);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "OpenStreetMap"
+    }).addTo(map);
+
+    let chart;
+
+    function renderChart(stateData) {
+      const ctx = document.getElementById("chart");
+
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: stateData.history.map(h => h.date),
+          datasets: [{
+            label: `${stateData.name} Gas Price ($)`,
+            data: stateData.history.map(h => h.price),
+            borderColor: "blue",
+            tension: 0.3
+          }]
+        }
+      });
+    }
+
+    fetch("./data/state-model.json")
+      .then(res => res.json())
+      .then(data => {
+        Object.keys(data).forEach(code => {
+          const s = data[code];
+
+          const marker = L.circleMarker([s.lat, s.lon], {
+            radius: 8,
+            color: "red"
+          }).addTo(map);
+
+          marker.bindTooltip(`${s.name}: $${s.regular}`);
+
+          marker.on("click", () => {
+            document.getElementById("stateTitle").innerText = s.name;
+            document.getElementById("statePrice").innerText =
+              `Current Regular Gas Price: $${s.regular}`;
+
+            renderChart(s);
+          });
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Gas data failed to load. Run GitHub Action first.");
+      });
+  </script>
+</body>
+</html>
